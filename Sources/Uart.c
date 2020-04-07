@@ -18,7 +18,7 @@
 
 bit busy;
 
-void Uart_Init()
+void UartInit()
 {
     ACC = P_SW1;
     ACC &= ~(S1_S0 | S1_S1);    //S1_S0=0 S1_S1=0
@@ -35,23 +35,23 @@ void Uart_Init()
 //  P_SW1 = ACC;  
 
 #if (PARITYBIT == NONE_PARITY)
-    SCON = 0x50;                //8Î»¿É±ä²¨ÌØÂÊ
+    SCON = 0x50;                //8ä½å¯å˜æ³¢ç‰¹ç‡
 #elif (PARITYBIT == ODD_PARITY) || (PARITYBIT == EVEN_PARITY) || (PARITYBIT == MARK_PARITY)
-    SCON = 0xda;                //9Î»¿É±ä²¨ÌØÂÊ,Ğ£ÑéÎ»³õÊ¼Îª1
+    SCON = 0xda;                //9ä½å¯å˜æ³¢ç‰¹ç‡,æ ¡éªŒä½åˆå§‹ä¸º1
 #elif (PARITYBIT == SPACE_PARITY)
-    SCON = 0xd2;                //9Î»¿É±ä²¨ÌØÂÊ,Ğ£ÑéÎ»³õÊ¼Îª0
+    SCON = 0xd2;                //9ä½å¯å˜æ³¢ç‰¹ç‡,æ ¡éªŒä½åˆå§‹ä¸º0
 #endif
-//	PS = 1;
-    AUXR |= 0x40;                //¶¨Ê±Æ÷1Îª1TÄ£Ê½
-	AUXR &= 0xFE;				 // S1ST2 = 0 Ê¹ÓÃT1×÷Îª²¨ÌØÂÊ·¢ÉúÆ÷
-    TMOD |= 0x00;                //¶¨Ê±Æ÷1ÎªÄ£Ê½0(16Î»×Ô¶¯ÖØÔØ)
-    TL1 = (65536 - (FOSC/4/BAUD));   //ÉèÖÃ²¨ÌØÂÊÖØ×°Öµ
+    PS = 1;
+    AUXR |= 0x40;                //å®šæ—¶å™¨1ä¸º1Tæ¨¡å¼
+    AUXR &= 0xFE;                // S1ST2 = 0 ä½¿ç”¨T1ä½œä¸ºæ³¢ç‰¹ç‡å‘ç”Ÿå™¨
+    TMOD |= 0x00;                //å®šæ—¶å™¨1ä¸ºæ¨¡å¼0(16ä½è‡ªåŠ¨é‡è½½)
+    TL1 = (65536 - (FOSC/4/BAUD));   //è®¾ç½®æ³¢ç‰¹ç‡é‡è£…å€¼
     TH1 = (65536 - (FOSC/4/BAUD))>>8;
-    TR1 = 1;                    //¶¨Ê±Æ÷1¿ªÊ¼Æô¶¯
-    ES = 1;                     //Ê¹ÄÜ´®¿ÚÖĞ¶Ï
-//    EA = 1;                 //Open master interrupt switch
+    TR1 = 1;                    //å®šæ—¶å™¨1å¼€å§‹å¯åŠ¨
+    ES = 1;                     //ä½¿èƒ½ä¸²å£ä¸­æ–­
+//    EA = 1;                     //Open master interrupt switch
 
-    Uart_SendString("Uart Initialize Ok !\r\n");
+    UartSendString("Uart Initialize Ok !\r\n");
 }
 
 /*----------------------------
@@ -59,7 +59,7 @@ UART interrupt service routine
 ----------------------------*/
 void Uart_Isr() interrupt 4
 {
-	u8 ReceiveData;
+    u8 ReceiveData;
     if (RI)
     {
         RI = 0;             //Clear receive interrupt flag
@@ -77,7 +77,7 @@ Send a byte data to UART
 Input: dat (data to be sent)
 Output:None
 ----------------------------*/
-void Uart_SendData(u8 dat)
+void UartSendData(u8 dat)
 {
     while (busy);           //Wait for the completion of the previous data is sent
     ACC = dat;              //Calculate the even parity bit P (PSW.0)
@@ -101,11 +101,11 @@ void Uart_SendData(u8 dat)
     SBUF = ACC;             //Send data to UART buffer
 }
 
-//putcharÖØ¶¨Ïò
+//putcharé‡å®šå‘
 char putchar(u8 dat)
 {
-	Uart_SendData(dat);
-	return (char)dat;
+    UartSendData(dat);
+    return (char)dat;
 }
 
 /*----------------------------
@@ -113,11 +113,11 @@ Send a string to UART
 Input: s (address of string)
 Output:None
 ----------------------------*/
-void Uart_SendString(char *s)
+void UartSendString(char *s)
 {
     while (*s)              //Check the end of the string
     {
-        Uart_SendData(*s++);     //Send current char and increment string ptr
+        UartSendData(*s++);     //Send current char and increment string ptr
     }
 }
 

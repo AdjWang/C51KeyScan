@@ -2,19 +2,19 @@
 #define _UART_H_
 #include <stdio.h>
 
-#define BAUD 9600             //´®¿Ú²¨ÌØÂÊ
+#define BAUD 9600               //ä¸²å£æ³¢ç‰¹ç‡
 
-#define NONE_PARITY     0       //ÎŞĞ£Ñé
-#define ODD_PARITY      1       //ÆæĞ£Ñé
-#define EVEN_PARITY     2       //Å¼Ğ£Ñé
-#define MARK_PARITY     3       //±ê¼ÇĞ£Ñé
-#define SPACE_PARITY    4       //¿Õ°×Ğ£Ñé
+#define NONE_PARITY     0       //æ— æ ¡éªŒ
+#define ODD_PARITY      1       //å¥‡æ ¡éªŒ
+#define EVEN_PARITY     2       //å¶æ ¡éªŒ
+#define MARK_PARITY     3       //æ ‡è®°æ ¡éªŒ
+#define SPACE_PARITY    4       //ç©ºç™½æ ¡éªŒ
 
-#define PARITYBIT NONE_PARITY   //¶¨ÒåĞ£ÑéÎ»
+#define PARITYBIT NONE_PARITY   //å®šä¹‰æ ¡éªŒä½
 
-extern void Uart_SendData(u8 dat);
-extern void Uart_SendString(char *s);
-extern void Uart_Init();
+extern void UartSendData(u8 dat);
+extern void UartSendString(char *s);
+extern void UartInit();
 
 
 #endif

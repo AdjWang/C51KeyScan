@@ -1,99 +1,110 @@
+/**
+Â * Copyright(C),2019-2020
+Â * FileName: main.c
+Â * Author: AdjWang
+Â * Version: 2.0
+Â * Date: 2020/04/08
+Â * Description: Â main source.
+Â * History: 
+ *     2018/10/09    V1.0   first version.
+ *     2020/04/08    V2.0   fix fp init bug;
+ *                          add eventQueue;
+ *                          add KeyScanConfig.h.
+*/
 #include "main.h"
 #include "Uart.h"
 #include "KeyScan.h"
 
-extern xdata circularQueue_t eventQueue;
-
-enum EnumUserKey 				//°´¼ü±àºÅºÍ¼üÖµÃ¶¾Ù ±àºÅ´Ó0¿ªÊ¼ ²»µÃ³¬¹ı(KEY_MAX_NUMBER-1)
+enum EnumUserKey                 //æŒ‰é”®ç¼–å· ä»0å¼€å§‹ ä¸å¾—è¶…è¿‡(MAX_KEY_NUMBER-1)
 {
-	EnumKey_A  = 0, EnumKey_Up_TriggerValue = 1<<EnumKey_A,
-	EnumKey_B  = 1, EnumKey_Down_TriggerValue = 1<<EnumKey_B,
-	EnumKey_C  = 2, EnumKey_Left_TriggerValue = 1<<EnumKey_C,
-	EnumKey_D  = 3, EnumKey_Right_TriggerValue = 1<<EnumKey_D
+    EnumKey_A  = 0,
+    EnumKey_B  = 1,
+    EnumKey_C  = 2,
+    EnumKey_D  = 3
 };
+#define GPIO_KEY_NUM 4                                  // æŒ‰é”®æ€»æ•°ï¼Œå³enum EnumUserKeyå®šä¹‰çš„æŒ‰é”®æ•°é‡
+xdata KeyIO_t SingleKey[GPIO_KEY_NUM];                  // æŒ‰é”®IOæ•°ç»„
+#define FUNC_KEY_NUM 3                                  // ç”¨æˆ·è‡ªå®šä¹‰çš„åŠŸèƒ½æ€»æ•°
+xdata KeyFunc_t KeyFuncs[FUNC_KEY_NUM];                 // æŒ‰é”®åŠŸèƒ½æ•°ç»„
 
-#define GPIO_KEY_NUM 4                                  //°´¼ü³ÉÔ±×ÜÊı
-xdata KeyIOTypedef_t SingleKey[GPIO_KEY_NUM];                   //µ¥¸ö°´¼ü³ÉÔ±Êı×éÖ¸Õë
-#define FUNC_KEY_NUM 3									//ÓÃ»§×Ô¶¨ÒåµÄ¹¦ÄÜ×ÜÊı
-xdata KeyTriggerTypedef_t KeyFuncs[FUNC_KEY_NUM];               //°´¼ü¹¦ÄÜÊı×éÖ¸Õë
+void Delay100ms()        //@11.0592MHz
+{
+    unsigned char i, j, k;
 
-xdata KeysTypedef_t Keys;                                     //×ÜµÄ°´¼üÄ£¿é½á¹¹ÌåÖ¸Õë
+    _nop_();
+    _nop_();
+    i = 5;
+    j = 52;
+    k = 195;
+    do
+    {
+        do
+        {
+            while (--k);
+        } while (--j);
+    } while (--i);
+}
 
 void Key7ShortPressEvent(void)
 {
-	P40 = ~P40;
+    P40 = ~P40;
 }
 void Key12ShortPressEvent(void)
 {
-	P41 = ~P41;
+    Delay100ms();
 }
 void Key17_22ShortPressEvent(void)
 {
-	P41 = ~P41;
-	Uart_SendString("Func2!lasjdfhaksfdhjaskdnclhfenclwaef \r\n");
-	//Õâ¸öÌ«ÂıÁË »áËÀ»ú! ·ÅÖ÷º¯ÊıÀïÒ²²»ĞĞ ´®¿Ú±»´ò¶ÏÁË¾Í»á¿¨ËÀ
+    P41 = ~P41;
+    // printfå‘é€é•¿ä¸²ä¼šæ­»æœºï¼Œæ¢ç”¨UartSendString
+    // å¦‚æœå¾ˆçŸ­å¯ä»¥ä½¿ç”¨printf
+    UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
+    Delay100ms();       // é•¿å»¶æ—¶ä¹Ÿä¸ä¼šæ­»æœºäº†ï¼Œå“ˆå“ˆ
+    UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
+    Delay100ms();
 }
 
 
-void KeyInit(void)		//°´¼üÉ¨Ãè³õÊ¼»¯
+void KeyInit(void)        //æŒ‰é”®æ‰«æåˆå§‹åŒ–
 {
-	u8 i;
-	for(i=0; i<FUNC_KEY_NUM; i++){
-		KeyFuncs[i].SingleClick = NULL;
-		KeyFuncs[i].ComboClick = NULL;
-		KeyFuncs[i].LongPress = NULL;
-		KeyFuncs[i].MultiPress = NULL;
-	}
-	
-	SingleKey[EnumKey_A].IOPort1 = "P36"; SingleKey[EnumKey_A].IOPort2 = "GND";		//×¢²á°´¼ü Port1±ØĞëÊÇIO¿Ú Port2ÊÇIO¿Ú»ò"GND"
-	SingleKey[EnumKey_B].IOPort1 = "P52"; SingleKey[EnumKey_B].IOPort2 = "GND";
-	SingleKey[EnumKey_C].IOPort1 = "P54"; SingleKey[EnumKey_C].IOPort2 = "GND";
-	SingleKey[EnumKey_D].IOPort1 = "P53"; SingleKey[EnumKey_D].IOPort2 = "GND";
-	
-	KeyFuncs[0].TriggerValue = EnumKey_Up_TriggerValue;			//ĞèÒªÏìÓ¦µÄ¼üÖµ ×¢ÒâÊÇ¼üÖµ! ²»ÊÇ¼ü±àºÅ! ×éºÏ°´¼üÓÃ»ò
-	KeyFuncs[0].SingleClick = Key7ShortPressEvent;		//×¢²á»Øµ÷º¯Êı
-	KeyFuncs[1].TriggerValue = EnumKey_Down_TriggerValue;		//ĞèÒªÏìÓ¦µÄ¼üÖµ ×¢ÒâÊÇ¼üÖµ! ²»ÊÇ¼ü±àºÅ! ×éºÏ°´¼üÓÃ»ò
-	KeyFuncs[1].SingleClick = Key12ShortPressEvent;		//×¢²á»Øµ÷º¯Êı
-	KeyFuncs[2].TriggerValue = EnumKey_Left_TriggerValue | EnumKey_Right_TriggerValue;		//ĞèÒªÏìÓ¦µÄ¼üÖµ ×¢ÒâÊÇ¼üÖµ! ²»ÊÇ¼ü±àºÅ! ×éºÏ°´¼üÓÃ»ò
-	KeyFuncs[2].MultiPress = Key17_22ShortPressEvent;		//×¢²á»Øµ÷º¯Êı
-	
-	KeyScanInit(SingleKey, GPIO_KEY_NUM, KeyFuncs, FUNC_KEY_NUM);
-}
-
-void Delay100ms()		//@11.0592MHz
-{
-	unsigned char i, j, k;
-
-	_nop_();
-	_nop_();
-	i = 5;
-	j = 52;
-	k = 195;
-	do
-	{
-		do
-		{
-			while (--k);
-		} while (--j);
-	} while (--i);
+    u8 i;    
+    for(i=0; i<FUNC_KEY_NUM; i++){            // å‡½æ•°æŒ‡é’ˆå¿…é¡»å…¨éƒ¨åˆå§‹åŒ–ä¸ºNULL
+        KeyFuncs[i].fp_singleClick = NULL;
+        KeyFuncs[i].fp_comboClick = NULL;
+        KeyFuncs[i].fp_longPress = NULL;
+        KeyFuncs[i].fp_multiPress = NULL;
+    }
+    
+    SingleKey[EnumKey_A].IOPort1 = "P36"; SingleKey[EnumKey_A].IOPort2 = "GND";        //æ³¨å†ŒæŒ‰é”® Port1å¿…é¡»æ˜¯IOå£ Port2æ˜¯IOå£æˆ–"GND"
+    SingleKey[EnumKey_B].IOPort1 = "P52"; SingleKey[EnumKey_B].IOPort2 = "GND";
+    SingleKey[EnumKey_C].IOPort1 = "P54"; SingleKey[EnumKey_C].IOPort2 = "GND";
+    SingleKey[EnumKey_D].IOPort1 = "P53"; SingleKey[EnumKey_D].IOPort2 = "GND";
+    
+    KeyFuncs[0].triggerValue = TRIGGER_VALUE(EnumKey_A);            //éœ€è¦å“åº”çš„é”®å€¼ æ³¨æ„æ˜¯é”®å€¼! ä¸æ˜¯é”®ç¼–å·! ç»„åˆæŒ‰é”®ç”¨æˆ–
+    KeyFuncs[0].fp_singleClick = Key7ShortPressEvent;               //æ³¨å†Œå›è°ƒå‡½æ•°ä¸ºå•å‡»åŠŸèƒ½
+    
+    KeyFuncs[1].triggerValue = TRIGGER_VALUE(EnumKey_B);            //éœ€è¦å“åº”çš„é”®å€¼ æ³¨æ„æ˜¯é”®å€¼! ä¸æ˜¯é”®ç¼–å·! ç»„åˆæŒ‰é”®ç”¨æˆ–
+    KeyFuncs[1].fp_singleClick = Key12ShortPressEvent;              //æ³¨å†Œå›è°ƒå‡½æ•°ä¸ºå•å‡»åŠŸèƒ½
+    
+    KeyFuncs[2].triggerValue = TRIGGER_VALUE(EnumKey_C) | TRIGGER_VALUE(EnumKey_D);        //éœ€è¦å“åº”çš„é”®å€¼ æ³¨æ„æ˜¯é”®å€¼! ä¸æ˜¯é”®ç¼–å·! ç»„åˆæŒ‰é”®ç”¨æˆ–
+    KeyFuncs[2].fp_multiPress = Key17_22ShortPressEvent;            //æ³¨å†Œå›è°ƒå‡½æ•°ä¸ºç»„åˆé”®åŠŸèƒ½
+    
+    KeyScanInit((KeyIO_t*)&SingleKey, GPIO_KEY_NUM, (KeyFunc_t*)&KeyFuncs, FUNC_KEY_NUM);
 }
 
 void main()
 {
-	EA = 1;
-	Uart_Init();
-	KeyInit();		//°´¼üÉ¨Ãè³õÊ¼»¯
-	Delay100ms();
-	printf("test\r\n");
-	while(1)
-	{
-		//WDT_CONTR = 0x3C;		//Î¹¹·
-		//Uart_SendString("test\r\n");
-		P67 = 0;
-		KeyEventProcess();
-		P67 = 1;  // off
-		//printf("head: %bd, tail: %bd\r\n", eventQueue.head, eventQueue.tail);
-	}
+    EA = 1;
+    UartInit();
+    KeyInit();        //æŒ‰é”®æ‰«æåˆå§‹åŒ–
+    // printfå‘é€é•¿ä¸²ä¼šæ­»æœºï¼Œä½¿ç”¨UartSendString
+    // printf("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
+    UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
+    while(1)
+    {
+        //WDT_CONTR = 0x3C;        //å–‚ç‹—
+        KeyEventProcess();
+    }
 }
 
 

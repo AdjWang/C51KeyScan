@@ -1,91 +1,107 @@
+/**
+聽* Copyright(C),2019-2020
+聽* FileName: KeyScan.h
+聽* Author: AdjWang
+聽* Version: 2.0
+聽* Date: 2020/04/08
+聽* Description: 聽Key scan module header.
+聽* History: 
+ *     2018/10/09    V1.0   first version.
+ *     2020/04/08    V2.0   fix fp init bug;
+ *                          add eventQueue;
+ *                          add KeyScanConfig.h.
+*/
 #ifndef _KeyScan_H_
 #define _KeyScan_H_
+#include "KeyScanConfig.h"
 
-#define			EN_P4						//如果按键连接到P4上需要使能此项 因为老款STC单片机没有P4
-#define			EN_P5						//如果按键连接到P5上需要使能此项 因为老款STC单片机没有P5
-typedef		unsigned int	keyporttype;	//数据类型是几位就支持几个按键 定义多了占内存
+#define     SET_BIT(a,b)                            ((a) |= (1 << (b)))
+#define     CLEAR_BIT(a,b)                          ((a) &= ~(1 << (b)))
+#define     IS_BIT_SET(a,b)                         ((a) & (1 << (b)))
+#define     MIN(a,b)                                ((a)>(b)?(b):(a))
+#define     MAX(a,b)                                ((a)>(b)?(a):(b))
+#define     TRIGGER_VALUE(key)                      (1<<(key))
 
-#define SET_BIT(a,b)                            ((a) |= (1 << (b)))
-#define CLEAR_BIT(a,b)                          ((a) &= ~(1 << (b)))
-#define IS_BIT_SET(a,b)                         ((a) & (1 << (b)))
-#define MIN(a,b)								((a)>(b)?(b):(a))
-#define MAX(a,b)								((a)>(b)?(a):(b))
-
-#define DEBOUNCE_TIME                           30			//消抖延时ms
-#define PRESS_LONG_TIME                         1500		//长按判定时间ms
-#define KEY_MAX_NUMBER							(sizeof(keyporttype)<<3)		//最大支持按键数量(sizeof(keyporttype)*8)
-#define N_CLICK_NUMBER							2			//连击判定次数
-#define N_CLICK_TIMELIMIT						300			//连击间隔超时时间ms
-#define	EVENT_QUEUE_LEN							8			// 事件队列长度，为了简化计算，需要为2的整数次幂
-
-enum EnumKeyNum					//扫描按键值枚举
+/* Key scan trigger value enum */
+enum EnumKeyTriggerValue
 {
-	EnumKey_NoKey = 0
+    EnumKey_NoKey = 0
 };
 
-enum EnumKeyState		//State是8位变量最多8个
+/* Key scan trigger state enum 
+ * KeyScanStates_t.triggerState is a 8bit variable,
+ * means max_num of EnumKeyTriggerState is 8
+*/
+enum EnumKeyTriggerState
 {
-	EnumKey_SingleClick = 0,
-	EnumKey_ComboClick = 1,
-	EnumKey_LongPress = 2,
-	EnumKey_MultiPress = 3
+    EnumKey_SingleClick = 0,
+    EnumKey_ComboClick = 1,
+    EnumKey_LongPress = 2,
+    EnumKey_MultiPress = 3
 };
 
-typedef struct 		//按键特征结构体
-{
-	keyporttype LastValue;		//保存上一次按键值 抬起时刷新
-	keyporttype Triggered;		//单次触发时此值等于键值 之后自动置0 用于短按判定
-	keyporttype Continuous;		//跟随键值 用于长按判定
-	u8 State;					//按照EnumKeyState描述
-}KeyStateTypedef_t;
-
-// functional structs
+/* Key scan variables */
 typedef struct
 {
-	//51单片机sfr寄存器不能间接寻址 所以使用字符串处理方式
-//    uint32_t         keyRccPeriph;
-//    GPIO_TypeDef     *keyPort;
-//    uint32_t         keyGpio;
-	u8 *IOPort1;		//字符串
-	u8 *IOPort2;
-}KeyIOTypedef_t;
+    keyTriggerType_t lastValue;        // last state of key, refresh when release
+    keyTriggerType_t triggered;        // trigger when a key pressed
+    keyTriggerType_t continuous;       // IO state
+    u8 triggerState;                   // the EnumKeyTriggerState to match with
+}KeyScanStates_t;
 
+/* Key IO struct */
 typedef struct
 {
-    keyporttype TriggerValue;			//按键事件触发时的检测值 可以动态赋值为枚举中的按键值或其组合
-    FUNCTIONPTR SingleClick;			//各功能回调函数指针 对应EnumKeyState  最多8个 如果添加功能需要在这里添加功能函数指针
-    FUNCTIONPTR ComboClick;
-    FUNCTIONPTR LongPress;
-    FUNCTIONPTR MultiPress;
-}KeyTriggerTypedef_t;
+    // The indirect addressing mode is not supposed to operate a sfr register
+    // Parsing string to operate a GPIO in an iteration statement maybe a good idea
+    u8 *IOPort1;        // string such like "P49", "P33"
+    u8 *IOPort2;
+}KeyIO_t;
 
+/* Key function struct
+ * Mapping a key and its event function
+*/
 typedef struct
 {
-    u8 KeyTotalNum;						//按键总数量
-    KeyIOTypedef_t *SingleKey;			//按键硬件连接描述
-	
-	u8 FuncTotalNum;					//按键功能数量
-	KeyTriggerTypedef_t *KeyTrigger;	//按键功能描述
-}KeysTypedef_t; 
+    keyTriggerType_t triggerValue;         // A value mapping with a key pressed state
+    FUNCTIONPTR fp_singleClick;            // A event function pointer, related to enum EnumKeyTriggerState
+    FUNCTIONPTR fp_comboClick;
+    FUNCTIONPTR fp_longPress;
+    FUNCTIONPTR fp_multiPress;
+}KeyFunc_t;
 
-// 环形加法
-#define		CIRCULAR_INC(x)		(((x)+1)&(EVENT_QUEUE_LEN-1))
-// 环形事件队列
+/* Keys description struct */
 typedef struct
 {
-	u8 head;	// head指向的元素为空
-	u8 tail;
-	FUNCTIONPTR queue[EVENT_QUEUE_LEN];
-}circularQueue_t;
+    u8 KeysNumber;             // Quantity of keys
+    KeyIO_t *KeyIO;            // Key IO struct pointer
+    
+    u8 FuncsNumber;            // Quantity of event functions
+    KeyFunc_t *KeyFunc;        // Key function struct pointer
+}Keys_t; 
 
-extern void circularQueueInit(circularQueue_t* eventQueue);
-extern void circularQueuePush(circularQueue_t* eventQueue, FUNCTIONPTR func);
-extern FUNCTIONPTR circularQueuePop(circularQueue_t* eventQueue);
+/* Circular increase operator
+ * To replace the operator % with &, EVENT_QUEUE_LEN must be n-th power of 2
+*/
+#define        CIRCULAR_INC(x)        (((x)+1)&(EVENT_QUEUE_LEN-1))
+/* Circular queue struct
+ * Empty when head == tail
+ * Full when CIRCULAR_INC(tail) == head
+*/
+typedef struct
+{
+    u8 head;    // head refers to an empty element
+    u8 tail;
+    FUNCTIONPTR queue[EVENT_QUEUE_LEN];
+}CircularQueue_t;
+
+extern void CircularQueueInit(CircularQueue_t* eventQueue);
+extern void CircularQueuePush(CircularQueue_t* eventQueue, FUNCTIONPTR func);
+extern FUNCTIONPTR CircularQueuePop(CircularQueue_t* eventQueue);
 extern void KeyEventProcess(void);
 
-void KeyScanInit(KeyIOTypedef_t* SingleKey, u8 singleKeyNum, KeyTriggerTypedef_t* KeyFuncs, u8 keyFuncNum);
-extern void KeyScanEnable();	//按键扫描使能函数
-extern void KeyScanDisable();	//按键扫描停止函数
-extern void T0_Init();
+extern void KeyScanInit(KeyIO_t* SingleKey, u8 singleKeyNum, KeyFunc_t* KeyFuncs, u8 keyFuncNum);
+extern void KeyScanEnable();
+extern void KeyScanDisable();
 
 #endif
