@@ -8,7 +8,7 @@
  * History: 
  *     2018/10/09    V1.0   first version.
  *     2020/04/08    V2.0   fix fp init bug;
- *                          add eventQueue;
+ *                          add IODataQueue;
  *                          add KeyScanConfig.h.
  * TODO list:
  *     1. config.h              Done
@@ -19,73 +19,77 @@
 #include "KeyScan.h"
 
 static xdata Keys_t Keys;       // Keys struct
-static xdata CircularQueue_t eventQueue;            // Key press event queue
+static xdata CircularQueue_t IODataQueue;            // Key press IO data queue
 
 static volatile u8 state = 0;    // State machine initialized as stop state
 static volatile KeyScanStates_t KeyScanStates;      // KeyScanStates struct
 
 /** 
- * @brief Initialize eventQueue
+ * @brief Initialize IODataQueue
  *     
  * @param 
- *     CircularQueue_t* eventQueue
+ *     CircularQueue_t* IODataQueue
  *
  * @return 
  * 
  * @note
  */
-void CircularQueueInit(CircularQueue_t* eventQueue){
+void CircularQueueInit(CircularQueue_t* CircularQueue){
 //    u8 i;
 //    for(i=0; i<EVENT_QUEUE_LEN; i++){
-//        eventQueue->queue[i] = NULL;
+//        CircularQueue->queue[i] = NONE_ELEMENT;
 //    }
-    eventQueue->head = eventQueue->tail = 0;
+    CircularQueue->head = CircularQueue->tail = 0;
 }
 
 /** 
  * @brief Push a element to the tail of the queue
  * @param 
- *     CircularQueue_t* eventQueue
- *     FUNCTIONPTR func
+ *     CircularQueue_t* IODataQueue
+ *     QUEUE_ELEMENT_TYPE e
  *
  * @return 
  * 
  * @note
  *     If the queue is full, the FUNCTIONPTR will be abandened
  * 
-    //    eventQueue->tail = nextTail;
-    //    // 如果在这里被打断会出问题，此时eventQueue->queue[nextTail]无效，不可以执行
-    //    eventQueue->queue[nextTail] = func;
+    //    IODataQueue->tail = nextTail;
+    //    // 如果在这里被打断会出问题，此时IODataQueue->queue[nextTail]无效，不可以执行
+    //    IODataQueue->queue[nextTail] = func;
  */
-void CircularQueuePush(CircularQueue_t* eventQueue, FUNCTIONPTR func){
-    u8 nextTail = CIRCULAR_INC(eventQueue->tail);
-    if(nextTail == eventQueue->head) return;    // full
-    eventQueue->queue[nextTail] = func;
-    eventQueue->tail = nextTail;
+void CircularQueuePush(CircularQueue_t* CircularQueue, QUEUE_ELEMENT_TYPE e){
+    u8 nextTail = CIRCULAR_INC(CircularQueue->tail);
+    if(nextTail == CircularQueue->head) return;    // full
+    CircularQueue->queue[nextTail] = e;
+    CircularQueue->tail = nextTail;
 }
 
 /** 
  * @brief Pop a element from the head of the queue
  * @param 
- *     CircularQueue_t* eventQueue
+ *     CircularQueue_t* IODataQueue
  *
  * @return 
- *     FUNCTIONPTR
+ *     QUEUE_ELEMENT_TYPE
  * 
  * @note
- *     If the queue is empty, a NULL pointer will be returned
+ *     If the queue is empty, a NONE_ELEMENT will be returned
  * 
- *     eventQueue->head = CIRCULAR_INC(eventQueue->head);
+ *     IODataQueue->head = CIRCULAR_INC(IODataQueue->head);
  *     这行产生了一个奇妙的bug
- *     如果高速重复此函数，在此行之后读eventQueue->head有一定概率读不对，出乱码
+ *     如果高速重复此函数，在此行之后读IODataQueue->head有一定概率读不对，出乱码
  *     使用0级优化可以解决该问题，但是看了汇编也没看出来是啥问题...(⊙_⊙)?
  *     最后试出来另一个办法，程序如下面所示
  */
-FUNCTIONPTR CircularQueuePop(CircularQueue_t* eventQueue){
-    if(eventQueue->tail == eventQueue->head){return NULL;}    // empty
-    eventQueue->head = CIRCULAR_INC(eventQueue->head);        // Accursed expression, where a strange problem occured!
-    if(eventQueue->head == 256){printf("%d\r\n", *(int*)eventQueue);} // This line will never be executed, but it does fix the f**king bug!!
-    return eventQueue->queue[eventQueue->head];
+QUEUE_ELEMENT_TYPE CircularQueuePop(CircularQueue_t* CircularQueue){
+    if(CircularQueue->head == CircularQueue->tail){return NONE_ELEMENT;}    // empty
+    CircularQueue->head = CIRCULAR_INC(CircularQueue->head);        // Accursed expression, where a strange problem occured!
+    //if(CircularQueue->head == 256){printf("%d\r\n", *(int*)CircularQueue);} // This line will never be executed, but it does fix the f**king bug!!
+    return CircularQueue->queue[CircularQueue->head];
+}
+
+u8 CircularQueueIsEmpty(CircularQueue_t* IODataQueue){
+    return IODataQueue->head == IODataQueue->tail;
 }
 
 /** 
@@ -107,22 +111,6 @@ static void Timer0Init(void){
 }
 
 /** 
- * @brief Pop and execute all event functions in the queue
- * @param 
- *
- * @return 
- * 
- * @note
- *     This function should be put into the while(1) of main()
- */
-void KeyEventProcess(void){
-    FUNCTIONPTR key_event;
-    while((key_event = CircularQueuePop((CircularQueue_t*)&eventQueue)) != NULL){
-        (*key_event)();
-    }
-}
-
-/** 
  * @brief Initialize key scan
  * @param 
  *     KeyIO_t* SingleKey        key IO struct
@@ -137,7 +125,7 @@ void KeyEventProcess(void){
  * 
  */
 void KeyScanInit(KeyIO_t* SingleKey, u8 singleKeyNum, KeyFunc_t* KeyFuncs, u8 keyFuncNum){
-    CircularQueueInit((CircularQueue_t*)&eventQueue);
+    CircularQueueInit((CircularQueue_t*)&IODataQueue);
     
     Keys.KeysNumber = MIN(singleKeyNum, MAX_KEY_NUMBER);        // Quantity of keys
     Keys.KeyIO = SingleKey;                                     // Struct linking
@@ -282,7 +270,8 @@ static keyTriggerType_t singleKeyRead(void){
 
 static keyTriggerType_t KeyRead(void)
 {
-    return singleKeyRead();
+    return CircularQueuePop((CircularQueue_t*)&IODataQueue);
+    // return singleKeyRead();
     // return portKeyRead();
 }
 
@@ -291,7 +280,7 @@ static keyTriggerType_t KeyRead(void)
  *     5 States
  *     Switch to the next state in Timer0ISR() to debounce
  */    
-// stop
+// Stop
 static void State0() {}
 // Check if pressed down
 static void State1(){
@@ -379,6 +368,68 @@ void KeyScanDisable(){
 }
 
 /** 
+ * @brief Pop and execute all event functions in the queue
+ * @param 
+ *
+ * @return 
+ * 
+ * @note
+ *     This function should be put into the while(1) of main()
+ */
+void KeyEventProcess(void){
+    static u8 i;    // Use static to fix a strange bug
+    if(CircularQueueIsEmpty((CircularQueue_t*)&IODataQueue)) {return;}
+    KeyScan();
+    if(KeyScanStates.continuous == EnumKey_NoKey) {return;}
+    // Check if a state triggered in EnumKeyTriggerState
+    // Max number is 8, add a new if(IS_BIT_SET...) block if a new EnumKeyTriggerState set
+    if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_SingleClick)){
+        CLEAR_BIT(KeyScanStates.triggerState, EnumKey_SingleClick);
+        // Get through the trigger value of every key to find out the triggered function
+        for(i=0; i<Keys.FuncsNumber; i++){
+            if(KeyScanStates.continuous == Keys.KeyFunc[i].triggerValue){
+                if(Keys.KeyFunc[i].fp_singleClick){
+                    (*Keys.KeyFunc[i].fp_singleClick)();
+                }
+            }
+        }
+    }
+    
+    if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_ComboClick)){
+        CLEAR_BIT(KeyScanStates.triggerState, EnumKey_ComboClick);
+        for(i=0; i<Keys.FuncsNumber; i++){
+            if(KeyScanStates.continuous == Keys.KeyFunc[i].triggerValue){
+                if(Keys.KeyFunc[i].fp_comboClick){
+                    (*Keys.KeyFunc[i].fp_comboClick)();
+                }
+            }
+        }
+    }
+    
+    if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_LongPress)){
+        CLEAR_BIT(KeyScanStates.triggerState, EnumKey_LongPress);
+        for(i=0; i<Keys.FuncsNumber; i++){
+            if(KeyScanStates.continuous == Keys.KeyFunc[i].triggerValue){
+                if(Keys.KeyFunc[i].fp_longPress){
+                    (*Keys.KeyFunc[i].fp_longPress)();
+                }
+            }
+        }
+    }
+    
+    if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_MultiPress)){
+        CLEAR_BIT(KeyScanStates.triggerState, EnumKey_MultiPress);
+        for(i=0; i<Keys.FuncsNumber;i++){
+            if(KeyScanStates.continuous == Keys.KeyFunc[i].triggerValue){
+                if(Keys.KeyFunc[i].fp_multiPress){
+                    (*Keys.KeyFunc[i].fp_multiPress)();
+                }
+            }
+        }
+    }
+}
+
+/** 
  * @brief key scan function in interrupt service routine
  * @param 
  *
@@ -387,56 +438,8 @@ void KeyScanDisable(){
  * @note
  *     This function should be put into the interrupt function
  */
-static void KeyHandleISR(Keys_t *Keys){
-    u8 i;
-    KeyScan();
-    if(KeyScanStates.continuous == EnumKey_NoKey) return;
-    // Check if a state triggered in EnumKeyTriggerState
-    // Max number is 8, add a new if(IS_BIT_SET...) block if a new EnumKeyTriggerState set
-    if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_SingleClick)){
-        CLEAR_BIT(KeyScanStates.triggerState, EnumKey_SingleClick);
-        // Get through the trigger value of every key to find out the triggered function
-        for(i=0; i<Keys->FuncsNumber; i++){
-            if(KeyScanStates.continuous == Keys->KeyFunc[i].triggerValue){
-                if(Keys->KeyFunc[i].fp_singleClick){
-                    CircularQueuePush(&eventQueue, Keys->KeyFunc[i].fp_singleClick);
-                }
-            }
-        }
-    }
-    
-    if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_ComboClick)){
-        CLEAR_BIT(KeyScanStates.triggerState, EnumKey_ComboClick);
-        for(i=0; i<Keys->FuncsNumber; i++){
-            if(KeyScanStates.continuous == Keys->KeyFunc[i].triggerValue){
-                if(Keys->KeyFunc[i].fp_comboClick){
-                    CircularQueuePush(&eventQueue, Keys->KeyFunc[i].fp_comboClick);
-                }
-            }
-        }
-    }
-    
-    if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_LongPress)){
-        CLEAR_BIT(KeyScanStates.triggerState, EnumKey_LongPress);
-        for(i=0; i<Keys->FuncsNumber; i++){
-            if(KeyScanStates.continuous == Keys->KeyFunc[i].triggerValue){
-                if(Keys->KeyFunc[i].fp_longPress){
-                    CircularQueuePush(&eventQueue, Keys->KeyFunc[i].fp_longPress);
-                }
-            }
-        }
-    }
-    
-    if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_MultiPress)){
-        CLEAR_BIT(KeyScanStates.triggerState, EnumKey_MultiPress);
-        for(i=0; i<Keys->FuncsNumber; i++){
-            if(KeyScanStates.continuous == Keys->KeyFunc[i].triggerValue){
-                if(Keys->KeyFunc[i].fp_multiPress){
-                    CircularQueuePush(&eventQueue, Keys->KeyFunc[i].fp_multiPress);
-                }
-            }
-        }
-    }
+static void KeyHandleISR(void){
+    CircularQueuePush((CircularQueue_t*)&IODataQueue, singleKeyRead());
 }
 
 /* Timer0 interrupt service routine */
@@ -444,7 +447,7 @@ void Timer0ISR(void) interrupt 1{
 // Auto reload after STC15
 //    TL0 = DEBOUNCE_TIME*T1MS;                     //reload timer0 low byte
 //    TH0 = (DEBOUNCE_TIME*T1MS) >> 8;              //reload timer0 high byte
-    KeyHandleISR((Keys_t *)&Keys);
+    KeyHandleISR();
 }
 
 

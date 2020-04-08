@@ -8,12 +8,13 @@
  * History: 
  *     2018/10/09    V1.0   first version.
  *     2020/04/08    V2.0   fix fp init bug;
- *                          add eventQueue;
+ *                          add IODataQueue;
  *                          add KeyScanConfig.h.
 */
 #ifndef _KeyScan_H_
 #define _KeyScan_H_
 #include "KeyScanConfig.h"
+#include "Uart.h"
 
 #define     SET_BIT(a,b)                            ((a) |= (1 << (b)))
 #define     CLEAR_BIT(a,b)                          ((a) &= ~(1 << (b)))
@@ -88,16 +89,19 @@ typedef struct
  * Empty when head == tail
  * Full when CIRCULAR_INC(tail) == head
 */
+#define        QUEUE_ELEMENT_TYPE      keyTriggerType_t
+#define        NONE_ELEMENT            EnumKey_NoKey
 typedef struct
 {
     u8 head;    // head refers to an empty element
     u8 tail;
-    FUNCTIONPTR queue[EVENT_QUEUE_LEN];
+    QUEUE_ELEMENT_TYPE queue[EVENT_QUEUE_LEN];
 }CircularQueue_t;
 
-extern void CircularQueueInit(CircularQueue_t* eventQueue);
-extern void CircularQueuePush(CircularQueue_t* eventQueue, FUNCTIONPTR func);
-extern FUNCTIONPTR CircularQueuePop(CircularQueue_t* eventQueue);
+//extern void CircularQueueInit(CircularQueue_t* CircularQueue);
+//extern void CircularQueuePush(CircularQueue_t* CircularQueue, QUEUE_ELEMENT_TYPE e);
+//extern QUEUE_ELEMENT_TYPE CircularQueuePop(CircularQueue_t* CircularQueue);
+//extern u8 CircularQueueIsEmpty(CircularQueue_t* CircularQueue);
 extern void KeyEventProcess(void);
 
 extern void KeyScanInit(KeyIO_t* SingleKey, u8 singleKeyNum, KeyFunc_t* KeyFuncs, u8 keyFuncNum);

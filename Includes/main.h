@@ -8,7 +8,7 @@
  * History: 
  *     2018/10/09    V1.0   first version.
  *     2020/04/08    V2.0   fix fp init bug;
- *                          add eventQueue;
+ *                          add IODataQueue;
  *                          add KeyScanConfig.h.
 */
 #ifndef _MAIN_H_
