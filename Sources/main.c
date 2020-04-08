@@ -15,12 +15,11 @@
 #include "Uart.h"
 #include "KeyScan.h"
 
-enum EnumUserKey                 //按键编号 从0开始 不得超过(MAX_KEY_NUMBER-1)
-{
-    EnumKey_A  = 0,
-    EnumKey_B  = 1,
-    EnumKey_C  = 2,
-    EnumKey_D  = 3
+enum EnumUserKey{                 //按键编号 从0开始 不得超过(MAX_KEY_NUMBER-1)
+    EnumKey_A = 0,
+    EnumKey_B = 1,
+    EnumKey_C = 2,
+    EnumKey_D = 3
 };
 #define GPIO_KEY_NUM 4                                  // 按键总数，即enum EnumUserKey定义的按键数量
 xdata KeyIO_t SingleKey[GPIO_KEY_NUM];                  // 按键IO数组
@@ -45,18 +44,15 @@ void Delay100ms()        //@11.0592MHz
     } while (--i);
 }
 
-void Key7ShortPressEvent(void)
-{
+void KeyAPressEvent(void){
     P40 = ~P40;
 }
-void Key12ShortPressEvent(void)
-{
+void KeyBPressEvent(void){
     Delay100ms();
 }
-void Key17_22ShortPressEvent(void)
-{
+void KeyCDPressEvent(void){
     P41 = ~P41;
-    // printf发送长串会死机，换用UartSendString
+    // printf发送长串被中断打断会死机，使用UartSendString
     // 如果很短可以使用printf
     UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
     Delay100ms();       // 长延时也不会死机了，哈哈
@@ -64,45 +60,49 @@ void Key17_22ShortPressEvent(void)
     Delay100ms();
 }
 
-
-void KeyInit(void)        //按键扫描初始化
-{
-    u8 i;    
-    for(i=0; i<FUNC_KEY_NUM; i++){            // 函数指针必须全部初始化为NULL
+//按键扫描初始化
+void KeyInit(void){
+    u8 i;
+    // 函数指针必须全部初始化为NULL
+    for(i=0; i<FUNC_KEY_NUM; i++){
         KeyFuncs[i].fp_singleClick = NULL;
         KeyFuncs[i].fp_comboClick = NULL;
         KeyFuncs[i].fp_longPress = NULL;
         KeyFuncs[i].fp_multiPress = NULL;
     }
     
-    SingleKey[EnumKey_A].IOPort1 = "P36"; SingleKey[EnumKey_A].IOPort2 = "GND";        //注册按键 Port1必须是IO口 Port2是IO口或"GND"
+    // 注册按键 Port1必须是IO口 Port2是IO口或"GND"
+    SingleKey[EnumKey_A].IOPort1 = "P36"; SingleKey[EnumKey_A].IOPort2 = "GND";
     SingleKey[EnumKey_B].IOPort1 = "P52"; SingleKey[EnumKey_B].IOPort2 = "GND";
     SingleKey[EnumKey_C].IOPort1 = "P54"; SingleKey[EnumKey_C].IOPort2 = "GND";
     SingleKey[EnumKey_D].IOPort1 = "P53"; SingleKey[EnumKey_D].IOPort2 = "GND";
     
-    KeyFuncs[0].triggerValue = TRIGGER_VALUE(EnumKey_A);            //需要响应的键值 注意是键值! 不是键编号! 组合按键用或
-    KeyFuncs[0].fp_singleClick = Key7ShortPressEvent;               //注册回调函数为单击功能
+    // 需要响应的键值 注意是键值! 不是键编号! 组合按键用或
+    KeyFuncs[0].triggerValue = TRIGGER_VALUE(EnumKey_A);
+    // 注册回调函数为单击功能
+    KeyFuncs[0].fp_singleClick = KeyAPressEvent;
     
-    KeyFuncs[1].triggerValue = TRIGGER_VALUE(EnumKey_B);            //需要响应的键值 注意是键值! 不是键编号! 组合按键用或
-    KeyFuncs[1].fp_singleClick = Key12ShortPressEvent;              //注册回调函数为单击功能
+    // 需要响应的键值 注意是键值! 不是键编号! 组合按键用或
+    KeyFuncs[1].triggerValue = TRIGGER_VALUE(EnumKey_B);
+    // 注册回调函数为单击功能
+    KeyFuncs[1].fp_singleClick = KeyBPressEvent;
     
-    KeyFuncs[2].triggerValue = TRIGGER_VALUE(EnumKey_C) | TRIGGER_VALUE(EnumKey_D);        //需要响应的键值 注意是键值! 不是键编号! 组合按键用或
-    KeyFuncs[2].fp_multiPress = Key17_22ShortPressEvent;            //注册回调函数为组合键功能
+    // 需要响应的键值 注意是键值! 不是键编号! 组合按键用或
+    KeyFuncs[2].triggerValue = TRIGGER_VALUE(EnumKey_C) | TRIGGER_VALUE(EnumKey_D);
+    // 注册回调函数为组合键功能
+    KeyFuncs[2].fp_multiPress = KeyCDPressEvent;
     
     KeyScanInit((KeyIO_t*)&SingleKey, GPIO_KEY_NUM, (KeyFunc_t*)&KeyFuncs, FUNC_KEY_NUM);
 }
 
-void main()
-{
+void main(){
     EA = 1;
     UartInit();
     KeyInit();        //按键扫描初始化
-    // printf发送长串会死机，使用UartSendString
+    // printf发送长串被中断打断会死机，使用UartSendString
     // printf("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
     UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
-    while(1)
-    {
-        //WDT_CONTR = 0x3C;        //喂狗
+    while(1){
         KeyEventProcess();
     }
 }
