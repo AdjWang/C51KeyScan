@@ -88,18 +88,19 @@ typedef struct
  * Empty when head == tail
  * Full when CIRCULAR_INC(tail) == head
 */
+#define        QUEUE_ELEMENT_TYPE      FUNCTIONPTR
+#define        NONE_ELEMENT            NULL
 typedef struct
 {
     u8 head;    // head refers to an empty element
     u8 tail;
-    FUNCTIONPTR queue[EVENT_QUEUE_LEN];
+    QUEUE_ELEMENT_TYPE queue[EVENT_QUEUE_LEN];
 }CircularQueue_t;
 
-extern void CircularQueueInit(CircularQueue_t* eventQueue);
-extern void CircularQueuePush(CircularQueue_t* eventQueue, FUNCTIONPTR func);
-extern FUNCTIONPTR CircularQueuePop(CircularQueue_t* eventQueue);
+extern void CircularQueueInit(CircularQueue_t* CircularQueue);
+extern void CircularQueuePush(CircularQueue_t* CircularQueue, QUEUE_ELEMENT_TYPE e);
+extern QUEUE_ELEMENT_TYPE CircularQueuePop(CircularQueue_t* CircularQueue);
 extern void KeyEventProcess(void);
-
 extern void KeyScanInit(KeyIO_t* SingleKey, u8 singleKeyNum, KeyFunc_t* KeyFuncs, u8 keyFuncNum);
 extern void KeyScanEnable();
 extern void KeyScanDisable();

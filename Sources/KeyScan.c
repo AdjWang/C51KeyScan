@@ -25,67 +25,67 @@ static volatile u8 state = 0;    // State machine initialized as stop state
 static volatile KeyScanStates_t KeyScanStates;      // KeyScanStates struct
 
 /** 
- * @brief Initialize eventQueue
+ * @brief Initialize CircularQueue
  *     
  * @param 
- *     CircularQueue_t* eventQueue
+ *     CircularQueue_t* CircularQueue
  *
  * @return 
  * 
  * @note
  */
-void CircularQueueInit(CircularQueue_t* eventQueue){
+void CircularQueueInit(CircularQueue_t* CircularQueue){
 //    u8 i;
 //    for(i=0; i<EVENT_QUEUE_LEN; i++){
-//        eventQueue->queue[i] = NULL;
+//        CircularQueue->queue[i] = NULL;
 //    }
-    eventQueue->head = eventQueue->tail = 0;
+    CircularQueue->head = CircularQueue->tail = 0;
 }
 
 /** 
  * @brief Push a element to the tail of the queue
  * @param 
- *     CircularQueue_t* eventQueue
- *     FUNCTIONPTR func
+ *     CircularQueue_t* CircularQueue
+ *     QUEUE_ELEMENT_TYPE e
  *
  * @return 
  * 
  * @note
  *     If the queue is full, the FUNCTIONPTR will be abandened
  * 
-    //    eventQueue->tail = nextTail;
-    //    // 如果在这里被打断会出问题，此时eventQueue->queue[nextTail]无效，不可以执行
-    //    eventQueue->queue[nextTail] = func;
+    //    CircularQueue->tail = nextTail;
+    //    // 如果在这里被打断会出问题，此时CircularQueue->queue[nextTail]无效，不可以执行
+    //    CircularQueue->queue[nextTail] = func;
  */
-void CircularQueuePush(CircularQueue_t* eventQueue, FUNCTIONPTR func){
-    u8 nextTail = CIRCULAR_INC(eventQueue->tail);
-    if(nextTail == eventQueue->head) return;    // full
-    eventQueue->queue[nextTail] = func;
-    eventQueue->tail = nextTail;
+void CircularQueuePush(CircularQueue_t* CircularQueue, QUEUE_ELEMENT_TYPE e){
+    u8 nextTail = CIRCULAR_INC(CircularQueue->tail);
+    if(nextTail == CircularQueue->head) return;    // full
+    CircularQueue->queue[nextTail] = e;
+    CircularQueue->tail = nextTail;
 }
 
 /** 
  * @brief Pop a element from the head of the queue
  * @param 
- *     CircularQueue_t* eventQueue
+ *     CircularQueue_t* CircularQueue
  *
  * @return 
- *     FUNCTIONPTR
+ *     QUEUE_ELEMENT_TYPE
  * 
  * @note
- *     If the queue is empty, a NULL pointer will be returned
+ *     If the queue is empty, a NONE_ELEMENT will be returned
  * 
- *     eventQueue->head = CIRCULAR_INC(eventQueue->head);
+ *     CircularQueue->head = CIRCULAR_INC(CircularQueue->head);
  *     这行产生了一个奇妙的bug
- *     如果高速重复此函数，在此行之后读eventQueue->head有一定概率读不对，出乱码
+ *     如果高速重复此函数，在此行之后读CircularQueue->head有一定概率读不对，出乱码
  *     使用0级优化可以解决该问题，但是看了汇编也没看出来是啥问题...(⊙_⊙)?
  *     最后试出来另一个办法，程序如下面所示
  */
-FUNCTIONPTR CircularQueuePop(CircularQueue_t* eventQueue){
-    if(eventQueue->tail == eventQueue->head){return NULL;}    // empty
-    eventQueue->head = CIRCULAR_INC(eventQueue->head);        // Accursed expression, where a strange problem occured!
-    if(eventQueue->head == 256){printf("%d\r\n", *(int*)eventQueue);} // This line will never be executed, but it does fix the f**king bug!!
-    return eventQueue->queue[eventQueue->head];
+QUEUE_ELEMENT_TYPE CircularQueuePop(CircularQueue_t* CircularQueue){
+    if(CircularQueue->tail == CircularQueue->head){return NONE_ELEMENT;}    // empty
+    CircularQueue->head = CIRCULAR_INC(CircularQueue->head);        // Accursed expression, where a strange problem occured!
+    if(CircularQueue->head == 256){printf("%d\r\n", *(int*)CircularQueue);} // This line will never be executed, but it does fix the f**king bug!!
+    return CircularQueue->queue[CircularQueue->head];
 }
 
 /** 
