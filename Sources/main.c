@@ -55,9 +55,9 @@ void KeyCDPressEvent(void){
     // printf发送长串被中断打断会死机，使用UartSendString
     // 如果很短可以使用printf
     UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
-//    Delay100ms();       // 长延时也不会死机了，哈哈
-//    UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
-//    Delay100ms();
+    Delay100ms();       // 长延时也不会死机了，哈哈
+    UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
+    Delay100ms();
 }
 
 //按键扫描初始化
