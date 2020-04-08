@@ -117,8 +117,7 @@ static void Timer0Init(void){
  */
 void KeyEventProcess(void){
     FUNCTIONPTR key_event;
-    while((key_event = CircularQueuePop((CircularQueue_t*)&eventQueue)) != NULL)
-    {
+    while((key_event = CircularQueuePop((CircularQueue_t*)&eventQueue)) != NULL){
         (*key_event)();
     }
 }
@@ -141,8 +140,8 @@ void KeyScanInit(KeyIO_t* SingleKey, u8 singleKeyNum, KeyFunc_t* KeyFuncs, u8 ke
     CircularQueueInit((CircularQueue_t*)&eventQueue);
     
     Keys.KeysNumber = MIN(singleKeyNum, MAX_KEY_NUMBER);        // Quantity of keys
-    Keys.KeyIO = SingleKey;                                        // Struct linking
-    Keys.FuncsNumber = keyFuncNum;                                // Quantity of event functions
+    Keys.KeyIO = SingleKey;                                     // Struct linking
+    Keys.FuncsNumber = keyFuncNum;                              // Quantity of event functions
     Keys.KeyFunc = KeyFuncs;                                    // Struct linking
 
     KeyScanEnable();
