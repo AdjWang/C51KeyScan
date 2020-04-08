@@ -159,7 +159,7 @@ void KeyScanInit(KeyIO_t* SingleKey, u8 singleKeyNum, KeyFunc_t* KeyFuncs, u8 ke
  * @note
  *     Usage example: GPIO_WriteBit("P49", 1);
  */
-static void GPIO_WriteBit(u8 *GPIO, bit write_bit){
+static void GPIO_WriteBit(s8 *GPIO, bit write_bit){
     if(GPIO[0] != 'P' && GPIO[0] != 'p') {return;}
     switch(GPIO[1]){
         case '0':
@@ -202,8 +202,8 @@ static void GPIO_WriteBit(u8 *GPIO, bit write_bit){
  * @note
  *     Usage example: u8 read_bit = GPIO_ReadBit("P49");
  */
-static u8 GPIO_ReadBit(u8 *GPIO){
-    if(GPIO[0] != 'P' && GPIO[0] != 'p') return 0;
+static u8 GPIO_ReadBit(s8 *GPIO){
+    if(GPIO[0] != 'P' && GPIO[0] != 'p') {return 0;}
     switch(GPIO[1]){
         case '0':
             SET_BIT(P0, GPIO[2]-'0'); return IS_BIT_SET(P0, GPIO[2]-'0');
@@ -336,7 +336,7 @@ static void State3(){
         if(KeyScanStates.triggered != EnumKey_NoKey){    // Single click or multipress
             SET_BIT(KeyScanStates.triggerState, 
                     (KeyScanStates.triggered == KeyScanStates.continuous) ? EnumKey_SingleClick : EnumKey_MultiPress
-                    );
+            );
         }
 
         KeyLongCheck++;
