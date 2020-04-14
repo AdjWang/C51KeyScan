@@ -133,7 +133,7 @@
        
        // 需要响应的键值 注意是键值! 不是键编号! 组合按键用或
        KeyFuncs[0].triggerValue = TRIGGER_VALUE(EnumKey_A);
-       // 注册回调函数为单击功能
+       // 注册回调函数为多击功能
        KeyFuncs[0].fp_comboClick = KeyAPressEvent;
        
        // 需要响应的键值 注意是键值! 不是键编号! 组合按键用或
