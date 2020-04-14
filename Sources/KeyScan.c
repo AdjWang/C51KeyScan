@@ -23,7 +23,7 @@ static xdata CircularQueue_t eventQueue;            // Key press event queue
 
 static volatile u8 state = 0;    // State machine initialized as stop state
 static u8 nClickTimeOut = 0;    // Combo click interval counter
-static volatile KeyScanStates_t KeyScanStates;      // KeyScanStates struct
+static xdata volatile KeyScanStates_t KeyScanStates;      // KeyScanStates struct
 
 /** 
  * @brief Initialize CircularQueue
@@ -35,7 +35,7 @@ static volatile KeyScanStates_t KeyScanStates;      // KeyScanStates struct
  * 
  * @note
  */
-void CircularQueueInit(CircularQueue_t* CircularQueue){
+static void CircularQueueInit(CircularQueue_t* CircularQueue){
 //    u8 i;
 //    for(i=0; i<EVENT_QUEUE_LEN; i++){
 //        CircularQueue->queue[i] = NULL;
@@ -58,7 +58,7 @@ void CircularQueueInit(CircularQueue_t* CircularQueue){
     //    // 如果在这里被打断会出问题，此时CircularQueue->queue[nextTail]无效，不可以执行
     //    CircularQueue->queue[nextTail] = func;
  */
-void CircularQueuePush(CircularQueue_t* CircularQueue, QUEUE_ELEMENT_TYPE e){
+static void CircularQueuePush(CircularQueue_t* CircularQueue, QUEUE_ELEMENT_TYPE e){
     u8 nextTail = CIRCULAR_INC(CircularQueue->tail);
     if(nextTail == CircularQueue->head) return;    // full
     CircularQueue->queue[nextTail] = e;
@@ -82,7 +82,7 @@ void CircularQueuePush(CircularQueue_t* CircularQueue, QUEUE_ELEMENT_TYPE e){
  *     使用0级优化可以解决该问题，但是看了汇编也没看出来是啥问题...(⊙_⊙)?
  *     最后试出来另一个办法，程序如下面所示
  */
-QUEUE_ELEMENT_TYPE CircularQueuePop(CircularQueue_t* CircularQueue){
+static QUEUE_ELEMENT_TYPE CircularQueuePop(CircularQueue_t* CircularQueue){
     if(CircularQueue->tail == CircularQueue->head){return NONE_ELEMENT;}    // empty
     CircularQueue->head = CIRCULAR_INC(CircularQueue->head);        // Accursed expression, where a strange problem occured!
     if(CircularQueue->head == 256){printf("%d\r\n", *(int*)CircularQueue);} // This line will never be executed, but it does fix the f**king bug!!
@@ -328,7 +328,7 @@ static void State3(){
     keyTriggerType_t temp;
     keyTriggerType_t read_data = KeyRead();
     
-    //nClickTimeOut++;
+    //nClickTimeOut++;      // Increase in KeyScan()
     if(nClickTimeOut >= (N_CLICK_TIMELIMIT / DEBOUNCE_TIME)-1){
         nClickTimeOut = 0;
         nClick = 0;
@@ -369,7 +369,7 @@ static void State3(){
                     SET_BIT(KeyScanStates.triggerState, EnumKey_ComboClick);
                 }
             }else{
-                nClick = 1;
+                nClick = 1; 
                 
             }
         }
@@ -389,8 +389,7 @@ static void State4(){
 static code FUNCTIONPTR fpStates[] = {State0, State1, State2, State3, State4};
 static void KeyScan(){
     (*fpStates[state])(); 
-    nClickTimeOut++;
-    if(nClickTimeOut >= 255){nClickTimeOut = 254;}
+    if(++nClickTimeOut >= 255){nClickTimeOut = 254;}
 }
 void KeyScanEnable(){
     KeyScanStates.triggerState = 0;
@@ -419,7 +418,7 @@ static void KeyHandle(){
     // Max number is 8, add a new if(IS_BIT_SET...) block if a new EnumKeyTriggerState set
     if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_SingleClick)){
         CLEAR_BIT(KeyScanStates.triggerState, EnumKey_SingleClick);
-        // Get through the trigger value of every key to find out the triggered function
+        // Get through the trigger value of keys to find out the triggered function
         for(i=0; i<Keys.FuncsNumber; i++){
             if(KeyScanStates.triggerValue == Keys.KeyFunc[i].triggerValue){
                 if(Keys.KeyFunc[i].fp_singleClick){

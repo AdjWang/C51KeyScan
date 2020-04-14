@@ -106,9 +106,9 @@ typedef struct
     QUEUE_ELEMENT_TYPE queue[EVENT_QUEUE_LEN];
 }CircularQueue_t;
 
-extern void CircularQueueInit(CircularQueue_t* CircularQueue);
-extern void CircularQueuePush(CircularQueue_t* CircularQueue, QUEUE_ELEMENT_TYPE e);
-extern QUEUE_ELEMENT_TYPE CircularQueuePop(CircularQueue_t* CircularQueue);
+//extern void CircularQueueInit(CircularQueue_t* CircularQueue);
+//extern void CircularQueuePush(CircularQueue_t* CircularQueue, QUEUE_ELEMENT_TYPE e);
+//extern QUEUE_ELEMENT_TYPE CircularQueuePop(CircularQueue_t* CircularQueue);
 extern void KeyEventProcess(void);
 extern void KeyScanInit(KeyIO_t* SingleKey, u8 singleKeyNum, KeyFunc_t* KeyFuncs, u8 keyFuncNum);
 extern void KeyScanEnable();
