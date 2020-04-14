@@ -126,15 +126,15 @@
        }
        
        // 注册按键 Port1必须是IO口 Port2是IO口或"GND"
-       SingleKey[EnumKey_A].IOPort1 = "P36"; SingleKey[EnumKey_A].IOPort2 = "GND";
-       SingleKey[EnumKey_B].IOPort1 = "P52"; SingleKey[EnumKey_B].IOPort2 = "GND";
-       SingleKey[EnumKey_C].IOPort1 = "P54"; SingleKey[EnumKey_C].IOPort2 = "GND";
-       SingleKey[EnumKey_D].IOPort1 = "P53"; SingleKey[EnumKey_D].IOPort2 = "GND";
+       SingleKey[EnumKey_A].IOPort1 = "P36"; SingleKey[EnumKey_A].IOPort2 = "GND"; SingleKey[EnumKey_A].type = KEY_TYPE_BUTTON;
+       SingleKey[EnumKey_B].IOPort1 = "P52"; SingleKey[EnumKey_B].IOPort2 = "GND"; SingleKey[EnumKey_B].type = KEY_TYPE_SWITCH;
+       SingleKey[EnumKey_C].IOPort1 = "P54"; SingleKey[EnumKey_C].IOPort2 = "GND"; SingleKey[EnumKey_C].type = KEY_TYPE_BUTTON;
+       SingleKey[EnumKey_D].IOPort1 = "P53"; SingleKey[EnumKey_D].IOPort2 = "GND"; SingleKey[EnumKey_D].type = KEY_TYPE_BUTTON;
        
        // 需要响应的键值 注意是键值! 不是键编号! 组合按键用或
        KeyFuncs[0].triggerValue = TRIGGER_VALUE(EnumKey_A);
        // 注册回调函数为单击功能
-       KeyFuncs[0].fp_singleClick = KeyAPressEvent;
+       KeyFuncs[0].fp_comboClick = KeyAPressEvent;
        
        // 需要响应的键值 注意是键值! 不是键编号! 组合按键用或
        KeyFuncs[1].triggerValue = TRIGGER_VALUE(EnumKey_B);

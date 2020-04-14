@@ -111,7 +111,7 @@ typedef struct
 //extern QUEUE_ELEMENT_TYPE CircularQueuePop(CircularQueue_t* CircularQueue);
 extern void KeyEventProcess(void);
 extern void KeyScanInit(KeyIO_t* SingleKey, u8 singleKeyNum, KeyFunc_t* KeyFuncs, u8 keyFuncNum);
-extern void KeyScanEnable();
-extern void KeyScanDisable();
+extern void KeyScanEnable(void);
+extern void KeyScanDisable(void);
 
 #endif

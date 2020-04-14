@@ -387,17 +387,17 @@ static void State4(){
 }
 
 static code FUNCTIONPTR fpStates[] = {State0, State1, State2, State3, State4};
-static void KeyScan(){
+static void KeyScan(void){
     (*fpStates[state])(); 
     if(++nClickTimeOut >= 255){nClickTimeOut = 254;}
 }
-void KeyScanEnable(){
+void KeyScanEnable(void){
     KeyScanStates.triggerState = 0;
     KeyScanStates.curNoKeyState = KeyRead() & KeyScanStates.noneState;
     KeyScanStates.triggerValue = KeyScanStates.curNoKeyState;
     state = 1; 
 }
-void KeyScanDisable(){
+void KeyScanDisable(void){
     KeyScanStates.triggered = KeyScanStates.continuous = KeyScanStates.curNoKeyState; 
     state = 0; 
 }
