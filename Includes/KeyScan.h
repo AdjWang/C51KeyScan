@@ -43,19 +43,28 @@ enum EnumKeyTriggerState
 /* Key scan variables */
 typedef struct
 {
+    // Set bit where the key is a switch, then & with KeyRead() as curNoKeyState
+    // to ignore the switch next debounce
+    keyTriggerType_t noneState;
+    keyTriggerType_t curNoKeyState;    // Replace EnumKey_NoKey to compatibility with switch
+    
     keyTriggerType_t lastValue;        // last state of key, refresh when release
     keyTriggerType_t triggered;        // trigger when a key pressed
     keyTriggerType_t continuous;       // IO state
+    keyTriggerType_t triggerValue;     // Trigger value to trigger an event
     u8 triggerState;                   // the EnumKeyTriggerState to match with
 }KeyScanStates_t;
 
 /* Key IO struct */
+#define     KEY_TYPE_BUTTON     0
+#define     KEY_TYPE_SWITCH     1
 typedef struct
 {
     // The indirect addressing mode is not supposed to operate a sfr register
     // Parsing string to operate a GPIO in an iteration statement maybe a good idea
     u8 *IOPort1;        // string such like "P49", "P33"
     u8 *IOPort2;
+    u8 type;            // 0 for button and 1 for switch
 }KeyIO_t;
 
 /* Key function struct

@@ -22,6 +22,7 @@ static xdata Keys_t Keys;       // Keys struct
 static xdata CircularQueue_t eventQueue;            // Key press event queue
 
 static volatile u8 state = 0;    // State machine initialized as stop state
+static u8 nClickTimeOut = 0;    // Combo click interval counter
 static volatile KeyScanStates_t KeyScanStates;      // KeyScanStates struct
 
 /** 
@@ -137,6 +138,8 @@ void KeyEventProcess(void){
  * 
  */
 void KeyScanInit(KeyIO_t* SingleKey, u8 singleKeyNum, KeyFunc_t* KeyFuncs, u8 keyFuncNum){
+    u8 i;
+    
     CircularQueueInit((CircularQueue_t*)&eventQueue);
     
     Keys.KeysNumber = MIN(singleKeyNum, MAX_KEY_NUMBER);        // Quantity of keys
@@ -144,6 +147,13 @@ void KeyScanInit(KeyIO_t* SingleKey, u8 singleKeyNum, KeyFunc_t* KeyFuncs, u8 ke
     Keys.FuncsNumber = keyFuncNum;                              // Quantity of event functions
     Keys.KeyFunc = KeyFuncs;                                    // Struct linking
 
+    KeyScanStates.noneState = 0;
+    for(i=0; i<Keys.KeysNumber; i++){
+        if(Keys.KeyIO[i].type == KEY_TYPE_SWITCH){
+            KeyScanStates.noneState |= 1 << i;
+        }
+    }
+    
     KeyScanEnable();
     Timer0Init();
 }
@@ -280,8 +290,7 @@ static keyTriggerType_t singleKeyRead(void){
     return read_data;
 }
 
-static keyTriggerType_t KeyRead(void)
-{
+static keyTriggerType_t KeyRead(void){
     return singleKeyRead();
     // return portKeyRead();
 }
@@ -297,16 +306,16 @@ static void State0() {}
 static void State1(){
     keyTriggerType_t read_data;
     read_data = KeyRead();
-    if(read_data != EnumKey_NoKey){        // Pressed down
+    if(read_data != KeyScanStates.curNoKeyState){        // Pressed down
         state++;
-    }else{                                // Released
+    }else{                                 // Released
         KeyScanStates.triggered = read_data & (read_data ^ KeyScanStates.continuous);
         KeyScanStates.continuous = read_data;    
     }
 }
 // Check again after debounce
 static void State2(){
-    if(KeyRead() != EnumKey_NoKey){
+    if(KeyRead() != KeyScanStates.curNoKeyState){
         state++;
     }else{
         state--;
@@ -314,51 +323,63 @@ static void State2(){
 }
 // Check if released
 static void State3(){
-    static u8 nClick = 0;        // Combo count
-    static u8 nClickTimeOut = 0;    // Combo click interval counter
+    static u8 nClick = 0;           // Combo count
     static u16 KeyLongCheck = 0;    // Long press time counter
-    keyTriggerType_t read_data;
-    read_data = KeyRead();
+    keyTriggerType_t temp;
+    keyTriggerType_t read_data = KeyRead();
     
-    nClickTimeOut++;
-    if(nClickTimeOut == (N_CLICK_TIMELIMIT / DEBOUNCE_TIME)-1){
+    //nClickTimeOut++;
+    if(nClickTimeOut >= (N_CLICK_TIMELIMIT / DEBOUNCE_TIME)-1){
         nClickTimeOut = 0;
         nClick = 0;
     }
     
-    if(read_data == EnumKey_NoKey){        // Released
+    if(read_data == KeyScanStates.curNoKeyState){        // Released
         KeyLongCheck = 0;                // Reset long press time count
         state++;
     }else{                                // Pressed down
-        KeyScanStates.triggered = read_data & (read_data ^ KeyScanStates.continuous);
+        temp = read_data ^ KeyScanStates.continuous;    // Event both button and switch
+        KeyScanStates.triggered = read_data & (read_data ^ KeyScanStates.continuous);   // Only button
         KeyScanStates.continuous = read_data;    
         
-        if(KeyScanStates.triggered != EnumKey_NoKey){    // Single click or multipress
+        // (temp = button and switch) & switch_filter
+        if((temp & KeyScanStates.noneState) != 0){      // Switch
+            SET_BIT(KeyScanStates.triggerState, EnumKey_SingleClick);
+            KeyScanStates.triggerValue = (temp & KeyScanStates.noneState); // Add switch
+        }else if(KeyScanStates.triggered != EnumKey_NoKey){// Button
+            KeyScanStates.triggerValue = KeyScanStates.continuous & ~KeyScanStates.noneState;
             SET_BIT(KeyScanStates.triggerState, 
-                    (KeyScanStates.triggered == KeyScanStates.continuous) ? EnumKey_SingleClick : EnumKey_MultiPress
+                    (KeyScanStates.triggered == (KeyScanStates.continuous & ~KeyScanStates.noneState)) \
+                    ? EnumKey_SingleClick : EnumKey_MultiPress
             );
         }
 
         KeyLongCheck++;
-        if(KeyLongCheck == (LONG_PRESS_TIME / DEBOUNCE_TIME)-1){            // Long press
+        if(KeyLongCheck >= (LONG_PRESS_TIME / DEBOUNCE_TIME)-1){            // Long press
             KeyLongCheck = 0;
             SET_BIT(KeyScanStates.triggerState, EnumKey_LongPress);
         }
         
-        if(KeyScanStates.lastValue != 0 && KeyScanStates.triggered == KeyScanStates.lastValue){
-            nClick++;
-            nClickTimeOut = 0;
-            if(nClick == N_CLICK_NUMBER){                // Combo click
-                nClick = 0;
-                SET_BIT(KeyScanStates.triggerState, EnumKey_ComboClick);
+        if(KeyScanStates.triggered != EnumKey_NoKey){
+            if(KeyScanStates.triggered == KeyScanStates.lastValue){
+                nClick++;
+                nClickTimeOut = 0;
+                if(nClick >= N_CLICK_NUMBER){                // Combo click
+                    nClick = 0;
+                    SET_BIT(KeyScanStates.triggerState, EnumKey_ComboClick);
+                }
+            }else{
+                nClick = 1;
+                
             }
         }
+        KeyScanStates.curNoKeyState = KeyScanStates.continuous & KeyScanStates.noneState;
     }
 }
 // Check again after debounce
 static void State4(){
-    if(KeyRead() == EnumKey_NoKey){        // Released
-        KeyScanStates.lastValue = KeyScanStates.continuous;        // Save key value
+    if(KeyRead() == KeyScanStates.curNoKeyState){        // Released
+        KeyScanStates.lastValue = (KeyScanStates.continuous & ~KeyScanStates.noneState);        // Save key value
         state = 1;
     }else{                                // Jitter
         state--;
@@ -368,13 +389,17 @@ static void State4(){
 static code FUNCTIONPTR fpStates[] = {State0, State1, State2, State3, State4};
 static void KeyScan(){
     (*fpStates[state])(); 
+    nClickTimeOut++;
+    if(nClickTimeOut >= 255){nClickTimeOut = 254;}
 }
 void KeyScanEnable(){
-    KeyScanStates.triggerState = 0x00; 
+    KeyScanStates.triggerState = 0;
+    KeyScanStates.curNoKeyState = KeyRead() & KeyScanStates.noneState;
+    KeyScanStates.triggerValue = KeyScanStates.curNoKeyState;
     state = 1; 
 }
 void KeyScanDisable(){
-    KeyScanStates.triggered = KeyScanStates.continuous = EnumKey_NoKey; 
+    KeyScanStates.triggered = KeyScanStates.continuous = KeyScanStates.curNoKeyState; 
     state = 0; 
 }
 
@@ -387,19 +412,18 @@ void KeyScanDisable(){
  * @note
  *     This function should be put into the interrupt function
  */
-static void KeyHandleISR(Keys_t *Keys){
+static void KeyHandle(){
     u8 i;
-    KeyScan();
-    if(KeyScanStates.continuous == EnumKey_NoKey) return;
+    if(KeyScanStates.triggerState == 0) {return;}
     // Check if a state triggered in EnumKeyTriggerState
     // Max number is 8, add a new if(IS_BIT_SET...) block if a new EnumKeyTriggerState set
     if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_SingleClick)){
         CLEAR_BIT(KeyScanStates.triggerState, EnumKey_SingleClick);
         // Get through the trigger value of every key to find out the triggered function
-        for(i=0; i<Keys->FuncsNumber; i++){
-            if(KeyScanStates.continuous == Keys->KeyFunc[i].triggerValue){
-                if(Keys->KeyFunc[i].fp_singleClick){
-                    CircularQueuePush(&eventQueue, Keys->KeyFunc[i].fp_singleClick);
+        for(i=0; i<Keys.FuncsNumber; i++){
+            if(KeyScanStates.triggerValue == Keys.KeyFunc[i].triggerValue){
+                if(Keys.KeyFunc[i].fp_singleClick){
+                    CircularQueuePush(&eventQueue, Keys.KeyFunc[i].fp_singleClick);
                 }
             }
         }
@@ -407,10 +431,10 @@ static void KeyHandleISR(Keys_t *Keys){
     
     if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_ComboClick)){
         CLEAR_BIT(KeyScanStates.triggerState, EnumKey_ComboClick);
-        for(i=0; i<Keys->FuncsNumber; i++){
-            if(KeyScanStates.continuous == Keys->KeyFunc[i].triggerValue){
-                if(Keys->KeyFunc[i].fp_comboClick){
-                    CircularQueuePush(&eventQueue, Keys->KeyFunc[i].fp_comboClick);
+        for(i=0; i<Keys.FuncsNumber; i++){
+            if(KeyScanStates.triggerValue == Keys.KeyFunc[i].triggerValue){
+                if(Keys.KeyFunc[i].fp_comboClick){
+                    CircularQueuePush(&eventQueue, Keys.KeyFunc[i].fp_comboClick);
                 }
             }
         }
@@ -418,10 +442,10 @@ static void KeyHandleISR(Keys_t *Keys){
     
     if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_LongPress)){
         CLEAR_BIT(KeyScanStates.triggerState, EnumKey_LongPress);
-        for(i=0; i<Keys->FuncsNumber; i++){
-            if(KeyScanStates.continuous == Keys->KeyFunc[i].triggerValue){
-                if(Keys->KeyFunc[i].fp_longPress){
-                    CircularQueuePush(&eventQueue, Keys->KeyFunc[i].fp_longPress);
+        for(i=0; i<Keys.FuncsNumber; i++){
+            if(KeyScanStates.triggerValue == Keys.KeyFunc[i].triggerValue){
+                if(Keys.KeyFunc[i].fp_longPress){
+                    CircularQueuePush(&eventQueue, Keys.KeyFunc[i].fp_longPress);
                 }
             }
         }
@@ -429,10 +453,10 @@ static void KeyHandleISR(Keys_t *Keys){
     
     if(IS_BIT_SET(KeyScanStates.triggerState, EnumKey_MultiPress)){
         CLEAR_BIT(KeyScanStates.triggerState, EnumKey_MultiPress);
-        for(i=0; i<Keys->FuncsNumber; i++){
-            if(KeyScanStates.continuous == Keys->KeyFunc[i].triggerValue){
-                if(Keys->KeyFunc[i].fp_multiPress){
-                    CircularQueuePush(&eventQueue, Keys->KeyFunc[i].fp_multiPress);
+        for(i=0; i<Keys.FuncsNumber; i++){
+            if(KeyScanStates.triggerValue == Keys.KeyFunc[i].triggerValue){
+                if(Keys.KeyFunc[i].fp_multiPress){
+                    CircularQueuePush(&eventQueue, Keys.KeyFunc[i].fp_multiPress);
                 }
             }
         }
@@ -444,7 +468,8 @@ void Timer0ISR(void) interrupt 1{
 // Auto reload after STC15
 //    TL0 = DEBOUNCE_TIME*T1MS;                     //reload timer0 low byte
 //    TH0 = (DEBOUNCE_TIME*T1MS) >> 8;              //reload timer0 high byte
-    KeyHandleISR((Keys_t *)&Keys);
+    KeyScan();
+    KeyHandle();
 }
 
 

@@ -46,18 +46,22 @@ void Delay100ms()        //@11.0592MHz
 
 void KeyAPressEvent(void){
     P40 = ~P40;
+    UartSendString("KeyAPressEvent\r\n");
 }
 void KeyBPressEvent(void){
-    Delay100ms();
+    P41 = ~P41;
+    UartSendString("KeyBPressEvent\r\n");
 }
 void KeyCDPressEvent(void){
-    P41 = ~P41;
+    static u8 i=0;
+    P42 = ~P42;
     // printf发送长串被中断打断会死机，使用UartSendString
     // 如果很短可以使用printf
-    UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
-    Delay100ms();       // 长延时也不会死机了，哈哈
-    UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
-    Delay100ms();
+//    UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
+//    Delay100ms();       // 长延时也不会死机了，哈哈
+//    UartSendString("testtesttesttesttesttesttesttesttesttesttesttesttest\r\n");
+//    Delay100ms();
+    printf("KeyCDPressEvent: %bd\r\n", i++);
 }
 
 //按键扫描初始化
@@ -72,15 +76,15 @@ void KeyInit(void){
     }
     
     // 注册按键 Port1必须是IO口 Port2是IO口或"GND"
-    SingleKey[EnumKey_A].IOPort1 = "P36"; SingleKey[EnumKey_A].IOPort2 = "GND";
-    SingleKey[EnumKey_B].IOPort1 = "P52"; SingleKey[EnumKey_B].IOPort2 = "GND";
-    SingleKey[EnumKey_C].IOPort1 = "P54"; SingleKey[EnumKey_C].IOPort2 = "GND";
-    SingleKey[EnumKey_D].IOPort1 = "P53"; SingleKey[EnumKey_D].IOPort2 = "GND";
+    SingleKey[EnumKey_A].IOPort1 = "P36"; SingleKey[EnumKey_A].IOPort2 = "GND"; SingleKey[EnumKey_A].type = KEY_TYPE_BUTTON;
+    SingleKey[EnumKey_B].IOPort1 = "P52"; SingleKey[EnumKey_B].IOPort2 = "GND"; SingleKey[EnumKey_B].type = KEY_TYPE_SWITCH;
+    SingleKey[EnumKey_C].IOPort1 = "P54"; SingleKey[EnumKey_C].IOPort2 = "GND"; SingleKey[EnumKey_C].type = KEY_TYPE_BUTTON;
+    SingleKey[EnumKey_D].IOPort1 = "P53"; SingleKey[EnumKey_D].IOPort2 = "GND"; SingleKey[EnumKey_D].type = KEY_TYPE_BUTTON;
     
     // 需要响应的键值 注意是键值! 不是键编号! 组合按键用或
     KeyFuncs[0].triggerValue = TRIGGER_VALUE(EnumKey_A);
     // 注册回调函数为单击功能
-    KeyFuncs[0].fp_singleClick = KeyAPressEvent;
+    KeyFuncs[0].fp_comboClick = KeyAPressEvent;
     
     // 需要响应的键值 注意是键值! 不是键编号! 组合按键用或
     KeyFuncs[1].triggerValue = TRIGGER_VALUE(EnumKey_B);
@@ -90,7 +94,7 @@ void KeyInit(void){
     // 需要响应的键值 注意是键值! 不是键编号! 组合按键用或
     KeyFuncs[2].triggerValue = TRIGGER_VALUE(EnumKey_C) | TRIGGER_VALUE(EnumKey_D);
     // 注册回调函数为组合键功能
-    KeyFuncs[2].fp_multiPress = KeyCDPressEvent;
+    KeyFuncs[2].fp_longPress = KeyCDPressEvent;
     
     KeyScanInit((KeyIO_t*)&SingleKey, GPIO_KEY_NUM, (KeyFunc_t*)&KeyFuncs, FUNC_KEY_NUM);
 }
