@@ -14,7 +14,13 @@
 
 - 定时器`0` - 按键扫描
 - 定时器`1` - 串口`1`
-- `Program Size: data=59.3 xdata=100 code=4214`(MDK5 C51编译，8级优化，还是占了挺多空间的，不过功能强大)
+- `Program Size: data=50.3 xdata=117 code=4713`(MDK5 C51编译，8级优化，还是占了挺多空间的，不过功能强大)
+
+## 功能说明
+
+- 支持`button`和`switch`
+- 支持`button`单击、多击、长按、多按键组合
+- 支持任意`IO`的按键连接
 
 ## 文件说明
 
@@ -195,7 +201,7 @@
 
 ## 其他
 
-设计思路参考`wiki`
+设计思路参考[`wiki`](https://github.com/AdjWang/C51KeyScan/wiki)
 
 ## `light_timer`分支
 
